@@ -1,0 +1,110 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'base.css' %}">
+    <!--<link rel="stylesheet" href="/static/base.css"> -->
+    <link rel="stylesheet" href="{% static 'bootstrap-3.3.5-dist/css/bootstrap.min.css' %}">
+    <script type="text/javascript" src="{% static 'jquery1.12.4.min.js' %}"></script>
+    <script type="text/javascript" src="{% static 'bootstrap-3.3.5-dist/js/bootstrap.min.js' %}"></script>
+    {% block header_extends %}{% endblock %}
+</head>
+<body>
+    <div class="navbar navbar-default navbar-fixed-top" role="navigation">
+        <div class="container-fluid">
+            <div class="navbar-header">
+                <a class="navbar-brand" href="{% url 'home' %}">个人博客网站</a>
+                <button class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar-collapse">
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                </button>
+            </div>
+            <div id="navbar-collapse" class="collapse navbar-collapse">
+                <ul class="nav navbar-nav">
+                    <!--为了让对应的页面都有选中的状态 -->
+                    <li class="{% block nav_home_active %}{% endblock %}"><a href="/">首页</a></li>
+                    <li class="{% block blog_list %}{% endblock %}"><a href="{% url  'blog_list'%}">博客</a></li>
+                </ul>
+                <ul class="nav navbar-nav navbar-right">
+                    {% if not user.is_authenticated %}
+                        <li><a href="{% url 'login' %}?from={{ request.get_full_path }}">登录</a></li>
+                        <li><a href="{% url 'register' %}?from={{ request.get_full_path }}">注册</a></li>
+                    {% else %}
+                        <li class="dropdown">
+                          <a href="#" class="dropdown-toggle" data-toggle="dropdown" role="button">
+                              {% if user.has_nickname %}
+                                  {{ user.username }}({{ user.get_nickname }})
+                              {% else %}
+                                  {{ user.username }}
+                              {% endif %}
+                              <span class="caret"></span>
+                          </a>
+                          <ul class="dropdown-menu">
+                            <li><a href="{% url 'user_info' %}">个人资料</a></li>
+                            <li><a href="{% url 'change_password' %}">修改密码</a></li>
+                            {% if user.is_staff or user.is_superuser %}
+                                <li><a href="{% url 'admin:index' %}">后台管理</a></li>{# {% url 'admin:index' %}是django本身自带的 #}
+                            {% endif %}
+                            <li><a href="{% url 'logout' %}?from={{ request.get_full_path }}">退出</a></li>{# from为当前路径 #}
+                          </ul>
+                        </li>
+                    {% endif %}
+                </ul>
+            </div>
+
+        </div>
+    </div>
+    {% block content %}{% endblock %}
+    <!-- Modal -->
+    <div class="modal fade" id="login_modal" tabindex="-1" role="dialog">
+        <div class="modal-dialog modal-sm" role="document">
+            <div class="modal-content">
+                <form id="login_medal_form" action="" method="POST">{# 这里用ajax提交，即不固定action的url，用js定位到id进行Ajax提交 #}
+                    <div class="modal-header">
+                        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+                        <h4 class="modal-title">登录</h4>
+                    </div>
+                    <div class="modal-body">
+                        {% csrf_token %}
+                        {% for field in login_modal_form %}{# 此处的login_modal_form来源于user app下的context_processors.py返回的值，再去到settings里面TEMPLATES设置为通用模板 #}
+                            <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+                            {{ field }}
+                        {% endfor %}
+                        <span id="login_medal_tip" class="text-danger"></span>{# 用来显示登录不成功的提示，通过js为span标签添加内容 #}
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="submit" class="btn btn-primary">登录</button>
+                        <button type="button" class="btn btn-default" data-dismiss="modal">关闭</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    <script type="text/javascript">
+        $("#login_medal_form").submit(function () {
+        $.ajax({
+            url:'{% url "login_for_model" %}',
+            type: 'POST',
+            data: $(this).serialize(),
+            cache: false,
+            success: function (data) {{# success为回调函数，参数data即后端给你返回的数据 #}
+                if(data['status'] == 'SUCCESS'){
+                    window.location.reload();//刷新页面
+                }else{
+                    $('#login_medal_tip').text('用户名或密码不正确')
+                }
+            }
+        });
+        return false; //阻止表单默认行为是为了防止跳转。此处需要判断ststus是否成功，在决定是手动刷新页面还是返回错误提示信息
+    });
+    </script>
+
+    {% block script_extends%}{% endblock %}
+</body>
+</html>
